@@ -3,11 +3,14 @@ import cors from "cors";
 import Joi from "joi";
 import { MongoClient } from "mongodb";
 import dotenv from "dotenv";
+import dayjs from "dayjs";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 dotenv.config();
+
+const now = dayjs().format("HH:mm:ss");
 
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
@@ -16,7 +19,7 @@ mongoClient.connect().then(() => {
   db = mongoClient.db("bpuol");
 });
 
-app.post("/participants", (req, res) => {
+app.post("/participants", async (req, res) => {
   const { name } = req.body;
 
   const schema = Joi.object({
@@ -33,9 +36,23 @@ app.post("/participants", (req, res) => {
     res.sendStatus(422);
     return;
   }
-
-  participants.push(newParticipant);
-  res.status(201).send(participants);
+  try {
+    await db.collection("participants").insertOne(newParticipant);
+    const newLogin = {
+      from: newParticipant.name,
+      to: "Todos",
+      text: "entra na sala...",
+      type: "status",
+      time: now,
+    };
+    await db.collection("login_messages").insertOne(newLogin);
+    res.sendStatus(201);
+  } catch (error) {
+    (err) => {
+      console.error(err);
+      res.sendStatus(500);
+    };
+  }
 });
 
 app.listen(5000, () => console.log("Listening on 5000"));
