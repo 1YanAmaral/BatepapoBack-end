@@ -37,7 +37,7 @@ app.post("/participants", async (req, res) => {
     return;
   }
   try {
-    const repeatedName = db
+    const repeatedName = await db
       .collection("participants")
       .find({ name: newParticipant.name })
       .toArray();
@@ -59,6 +59,52 @@ app.post("/participants", async (req, res) => {
     (err) => {
       console.error(err);
       res.sendStatus(500);
+    };
+  }
+});
+
+app.get("/participants", async (req, res) => {
+  try {
+    const allParticipants = await db
+      .collection("participants")
+      .find()
+      .toArray();
+    res.send(allParticipants);
+  } catch (error) {
+    (err) => {
+      console.error(err);
+      res.statusSend(500);
+    };
+  }
+});
+
+app.post("/messages", async (req, res) => {
+  const { to, text, type } = req.body;
+  const from = req.headers.user;
+
+  const schema = Joi.object({
+    to: Joi.string().required(),
+    text: Joi.string().required(),
+    type: Joi.string().required().valid("message").valid("private_message"),
+    from: Joi.string().required(),
+  });
+  try {
+    const newMessage = await schema.validateAsync({ to, text, type, from });
+    const loggedParticipants = await db
+      .collection("participants")
+      .find({ name: from })
+      .toArray();
+    if (loggedParticipants.length === 0) {
+      res.status(422).send("Usuário não logado");
+      console.log(loggedParticipants);
+      return;
+    }
+    await db.collection("messages").insertOne({ ...newMessage, time: now });
+    res.sendStatus(201);
+  } catch (error) {
+    (err) => {
+      console.error(err);
+      res.statusSend(500);
     };
   }
 });
