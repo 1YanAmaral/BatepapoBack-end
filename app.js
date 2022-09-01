@@ -10,8 +10,6 @@ app.use(cors());
 app.use(express.json());
 dotenv.config();
 
-const now = dayjs().format("HH:mm:ss");
-
 const mongoClient = new MongoClient(process.env.MONGO_URI);
 let db;
 
@@ -51,7 +49,7 @@ app.post("/participants", async (req, res) => {
       to: "Todos",
       text: "entra na sala...",
       type: "status",
-      time: now,
+      time: dayjs().format("HH:mm:ss"),
     };
     await db.collection("login_messages").insertOne(newLogin);
     res.sendStatus(201);
@@ -73,7 +71,7 @@ app.get("/participants", async (req, res) => {
   } catch (error) {
     (err) => {
       console.error(err);
-      res.statusSend(500);
+      res.sendStatus(500);
     };
   }
 });
@@ -99,12 +97,31 @@ app.post("/messages", async (req, res) => {
       console.log(loggedParticipants);
       return;
     }
-    await db.collection("messages").insertOne({ ...newMessage, time: now });
+    await db
+      .collection("messages")
+      .insertOne({ ...newMessage, time: dayjs().format("HH:mm:ss") });
     res.sendStatus(201);
   } catch (error) {
     (err) => {
       console.error(err);
-      res.statusSend(500);
+      res.sendStatus(500);
+    };
+  }
+});
+
+app.get("/messages", async (req, res) => {
+  const limit = parseInt(req.query.limit);
+  try {
+    const messages = await db.collection("messages").find().toArray();
+    if (limit) {
+      res.send(messages.splice(-limit));
+      return;
+    }
+    res.send(messages);
+  } catch (error) {
+    (err) => {
+      console.error(err);
+      res.sendStatus(500);
     };
   }
 });
