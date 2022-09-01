@@ -1,12 +1,20 @@
 import express from "express";
 import cors from "cors";
 import Joi from "joi";
+import { MongoClient } from "mongodb";
+import dotenv from "dotenv";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+dotenv.config();
 
-const participants = [];
+const mongoClient = new MongoClient(process.env.MONGO_URI);
+let db;
+
+mongoClient.connect().then(() => {
+  db = mongoClient.db("bpuol");
+});
 
 app.post("/participants", (req, res) => {
   const { name } = req.body;
