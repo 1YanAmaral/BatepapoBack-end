@@ -37,6 +37,14 @@ app.post("/participants", async (req, res) => {
     return;
   }
   try {
+    const repeatedName = db
+      .collection("participants")
+      .find({ name: newParticipant.name })
+      .toArray();
+    if (repeatedName.length !== 0) {
+      res.status(409).send("Nome já em uso");
+      return;
+    }
     await db.collection("participants").insertOne(newParticipant);
     const newLogin = {
       from: newParticipant.name,
