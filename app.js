@@ -111,8 +111,16 @@ app.post("/messages", async (req, res) => {
 
 app.get("/messages", async (req, res) => {
   const limit = parseInt(req.query.limit);
+  const user = req.headers.user;
+  console.log(user);
+  const allMessages = await db.collection("messages").find().toArray();
   try {
-    const messages = await db.collection("messages").find().toArray();
+    const messages = allMessages.filter(
+      (message) =>
+        (message.type === "private_message" && message.from === user) ||
+        (message.type === "private_message" && message.to === user) ||
+        message.type === "message" //|| message.type === "private message" //&& message.from === user
+    );
     if (limit) {
       res.send(messages.splice(-limit));
       return;
