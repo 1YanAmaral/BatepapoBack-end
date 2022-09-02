@@ -119,13 +119,34 @@ app.get("/messages", async (req, res) => {
       (message) =>
         (message.type === "private_message" && message.from === user) ||
         (message.type === "private_message" && message.to === user) ||
-        message.type === "message" //|| message.type === "private message" //&& message.from === user
+        message.type === "message"
     );
     if (limit) {
       res.send(messages.splice(-limit));
       return;
     }
     res.send(messages);
+  } catch (error) {
+    (err) => {
+      console.error(err);
+      res.sendStatus(500);
+    };
+  }
+});
+
+app.post("/status", async (req, res) => {
+  const user = req.headers.user;
+  try {
+    const allUsers = await db.collection("participants").find().toArray();
+    const loggedUser = allUsers.find((users) => users.name === user);
+    if (!loggedUser) {
+      res.sendStatus(404);
+      return;
+    }
+    await db
+      .collection("participants")
+      .updateOne(loggedUser, { $set: { lastStatus: Date.now() } });
+    res.sendStatus(200);
   } catch (error) {
     (err) => {
       console.error(err);
