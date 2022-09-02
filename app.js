@@ -51,7 +51,7 @@ app.post("/participants", async (req, res) => {
       type: "status",
       time: dayjs().format("HH:mm:ss"),
     };
-    await db.collection("login_messages").insertOne(newLogin);
+    await db.collection("messages").insertOne(newLogin);
     res.sendStatus(201);
   } catch (error) {
     (err) => {
@@ -113,14 +113,15 @@ app.post("/messages", async (req, res) => {
 app.get("/messages", async (req, res) => {
   const limit = parseInt(req.query.limit);
   const user = req.headers.user;
-  console.log(user);
+
   const allMessages = await db.collection("messages").find().toArray();
   try {
     const messages = allMessages.filter(
       (message) =>
         (message.type === "private_message" && message.from === user) ||
         (message.type === "private_message" && message.to === user) ||
-        message.type === "message"
+        message.type === "message" ||
+        message.type === "status"
     );
     if (limit) {
       res.send(messages.splice(-limit));
@@ -162,19 +163,16 @@ async function removeInactive() {
     users.forEach(async (user) => {
       if (Date.now() - parseInt(user.lastStatus) > 10000) {
         await db.collection("participants").deleteOne(user);
-        await db.collection("login_messages").insertOne({
+        await db.collection("messages").insertOne({
           from: user.name,
           to: "Todos",
-          text: "sai na sala...",
+          text: "sai da sala...",
           type: "status",
           time: dayjs().format("HH:mm:ss"),
         });
       }
     });
-    //res.sendStatus(200);
-  } catch (error) {
-    //res.sendStatus(500);
-  }
+  } catch (error) {}
 }
 setInterval(removeInactive, 15000);
 
