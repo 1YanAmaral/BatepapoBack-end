@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import Joi from "joi";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dotenv from "dotenv";
 import dayjs from "dayjs";
 
@@ -67,6 +67,7 @@ app.get("/participants", async (req, res) => {
       .collection("participants")
       .find()
       .toArray();
+
     res.send(allParticipants);
   } catch (error) {
     (err) => {
@@ -154,5 +155,27 @@ app.post("/status", async (req, res) => {
     };
   }
 });
+
+async function removeInactive() {
+  try {
+    const users = await db.collection("participants").find().toArray();
+    users.forEach(async (user) => {
+      if (Date.now() - parseInt(user.lastStatus) > 10000) {
+        await db.collection("participants").deleteOne(user);
+        await db.collection("login_messages").insertOne({
+          from: user.name,
+          to: "Todos",
+          text: "sai na sala...",
+          type: "status",
+          time: dayjs().format("HH:mm:ss"),
+        });
+      }
+    });
+    //res.sendStatus(200);
+  } catch (error) {
+    //res.sendStatus(500);
+  }
+}
+setInterval(removeInactive, 15000);
 
 app.listen(5000, () => console.log("Listening on 5000"));
