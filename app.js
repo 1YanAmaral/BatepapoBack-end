@@ -139,8 +139,9 @@ app.get("/messages", async (req, res) => {
 app.post("/status", async (req, res) => {
   const user = req.headers.user;
   try {
-    const allUsers = await db.collection("participants").find().toArray();
-    const loggedUser = allUsers.find((users) => users.name === user);
+    const loggedUser = await db
+      .collection("participants")
+      .findOne({ name: user });
     if (!loggedUser) {
       res.sendStatus(404);
       return;
@@ -175,5 +176,74 @@ async function removeInactive() {
   } catch (error) {}
 }
 setInterval(removeInactive, 15000);
+
+app.delete("/messages/:messageId", async (req, res) => {
+  const { messageId } = req.params;
+  const { user } = req.headers;
+  console.log(user);
+  try {
+    const message = await db
+      .collection("messages")
+      .findOne({ _id: ObjectId(messageId) });
+
+    if (!message) {
+      res.sendStatus(404);
+      return;
+    }
+    if (message.from !== user) {
+      res.sendStatus(401);
+      return;
+    }
+    await db.collection("messages").deleteOne({ _id: ObjectId(messageId) });
+
+    res.sendStatus(200);
+  } catch (error) {
+    (err) => {
+      console.error(err);
+      res.sendStatus(500);
+    };
+  }
+});
+
+app.put("/messages/:messageId", async (req, res) => {
+  const { to, text, type } = req.body;
+  const from = req.headers.user;
+  const { messageId } = req.params;
+
+  const schema = Joi.object({
+    to: Joi.string().required(),
+    text: Joi.string().required(),
+    type: Joi.string().required().valid("message").valid("private_message"),
+    from: Joi.string().required(),
+  });
+
+  try {
+    const newMessage = await schema.validateAsync({ to, text, type, from });
+    const loggedParticipants = await db
+      .collection("participants")
+      .find({ name: from })
+      .toArray();
+    if (loggedParticipants.length === 0) {
+      res.status(422).send("Usuário não logado");
+      return;
+    }
+
+    const message = await db
+      .collection("messages")
+      .findOne({ _id: ObjectId(messageId) });
+    if (!message) {
+      res.sendStatus(404);
+      return;
+    }
+    if (from !== message.from) {
+      res.sendStatus(401);
+      return;
+    }
+
+    await db
+      .collection("messages")
+      .updateOne({ _id: ObjectId(messageId) }, { $set: newMessage });
+  } catch (error) {}
+});
 
 app.listen(5000, () => console.log("Listening on 5000"));
